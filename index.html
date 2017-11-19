@@ -1,0 +1,92 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>DemoApp</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <dialog id="result-dialog">
+        <input type="text" id="comment" placeholder="何を変更？"/>
+        <button value="ok" onclick="dialog.close()">OK</button>
+    </dialog>
+    <div id="menu-bar">
+      <button onclick="Webview.goBack()"><</button>
+      <input type="text" id="url"  value="http://electron.atom.io/"></input>
+      <button onclick="load();">Load</button>
+      <button onclick="capture();">Caputre</button>
+    </div>
+    <div id="webview_wrapper">
+    </div>
+  </body>
+<script>
+const fs = require('fs')
+const WebClient = require('@slack/client').WebClient
+const config = require('./config.json')
+const apiToken = config.token
+const Readable = require('stream').Readable
+
+const slack = new WebClient(apiToken)
+
+
+let Webview;
+let url;
+let dialog
+window.onload = () => {
+  // create_new_webview_instanse
+  Webview = document.createElement("webview");
+  Webview.id = "foo";
+  Webview.setAttribute("src",url);
+  // append new_webview
+  const webview_wrapper = document.getElementById("webview_wrapper");
+  webview_wrapper.appendChild(Webview);
+
+  url = document.getElementById("url")
+  dialog = document.querySelector('#result-dialog')
+
+  Webview.addEventListener('load-commit', (newURL) => {
+    if (newURL.isMainFrame) {
+      url.value = newURL.url
+    }
+  })
+
+  setInterval(() => {
+    Webview.reload()
+  }, 120000)
+
+  setTimeout(load, 10)
+}
+
+const load = () => {
+  Webview.loadURL(url.value)
+}
+const capture = () => {
+
+  dialog.showModal()
+
+  const onClose = e => {
+    dialog.removeEventListener('close', onClose)
+    const comment = document.querySelector('#comment').value
+    if (!comment)return
+    Webview.capturePage((data) => {
+      fs.writeFileSync('./poi.png', data.toPNG())
+      const option = {
+        filename: 'result-' + Date.now(),
+        channels: 'result',
+        initial_comment: comment,
+        file: fs.createReadStream('./tmp.png')
+      }
+      slack.files.upload('result-' + Date.now(), option, (err, res) => {
+        console.log(err, res)
+        if (!err) {
+          alert('投稿に成功しました！')
+        }
+      })
+    })
+  }
+  dialog.addEventListener('close', onClose, {once: true})
+}
+</script>
+</html>
