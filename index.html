@@ -71,7 +71,7 @@ const capture = () => {
     const comment = document.querySelector('#comment').value
     if (!comment)return
     Webview.capturePage((data) => {
-      fs.writeFileSync('./poi.png', data.toPNG())
+      fs.writeFileSync('./tmp.png', data.toPNG())
       const option = {
         filename: 'result-' + Date.now(),
         channels: 'result',
